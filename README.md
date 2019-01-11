@@ -30,28 +30,28 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 * Slapdown: If you play a card or multiples of a card and draw from the draw pile, if the card is of the same value, you may quickly slap down the card onto the discard pile.
 * If a player plays a series with a Joker, even if it is in the middle of a series, if the next player has the card that belongs in the place of Joker, they may swap the card for the Joker as their turn.
 
+#### Variations
+Variations can be set by changing the defined macros at the beginning of the code
+* Slapdown
+* Joker Swap
+* 50-point reduction instead of 50% reduction on multiples of 50
+* Different number of points required to call Yaniv (ex. 5, 7, 9, 11)
+* Extra 20-point penalties to caller of Yaniv for every additional player who can call Assaf
+* Allow picking up any card in a set of 3-of-a-kind or 4-of-a-kind and not just the first or last (the rule still applies to series)
 
 ## What I plan to do next:
 
 #### Improvements to AI:
 * Allow AI to find a series in its hand or pick up a card to make a series (currently AI only plays multiples)
 * Assaf suspicion - Prevent AI from calling Yaniv if it suspects a player may have fewer points based on the cards they have picked up publicly and the number of cards in their hand
-
-#### Variations:
-* Allow users to choose the variation of the rules they want:
-    * Slapdown (Already added)
-    * Swap card Joker is substituting for the Joker even if its in the middle of a series
-    * 50 point reduction instead of half reduction on multiples of 50
-    * Different number of points required to call Yaniv (ex. 5, 7, 9, 11)
-    * Extra 20-point penalties to caller of Yaniv for every additional player who can call Assaf
-    * Allow picking up any card in a set of 3-of-a-kind or 4-of-a-kind and not just first or last
     
 #### Improvents to provided text
 * Before a person's turn, show cards drawn and discarded in the previous turn by each of the other players
 * Show number of cards each player holds
 
-#### Features to Add
-* Possibly allow user to undo their discard before they draw their card
+#### Features to possibly add
+* Allow users to choose the variation of the rules they want while running the program
+* Allow user to undo their discard before they draw their card
 
-#### Design Improvements
+#### Design improvements
 * Form the shape of cards when printing instead of printing as text
