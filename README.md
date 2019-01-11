@@ -31,13 +31,13 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 * If a player plays a series with a Joker, even if it is in the middle of a series, if the next player has the card that belongs in the place of Joker, they may swap the card for the Joker as their turn.
 
 ### Variations
-Variations can be set by changing the defined macros at the beginning of the code
 * Slapdown
 * Joker Swap
 * 50-point reduction instead of 50% reduction on multiples of 50
 * Different number of points required to call Yaniv (ex. 5, 7, 9, 11)
 * Extra 20-point penalties to caller of Yaniv for every additional player who can call Assaf
 * Allow picking up any card in a set of 3-of-a-kind or 4-of-a-kind and not just the first or last (the rule still applies to series)
+Variations can be set by changing the defined macros at the beginning of the code
 
 ## What I plan to do next:
 
