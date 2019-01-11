@@ -45,10 +45,6 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 ### Improvements to AI:
 * Allow AI to find a series in its hand or pick up a card to make a series (currently AI only plays multiples)
 * Assaf suspicion - Prevent AI from calling Yaniv if it suspects a player may have fewer points based on the cards they have picked up publicly and the number of cards in their hand
-    
-### Improvents to provided text
-* Before a person's turn, show cards drawn and discarded in the previous turn by each of the other players
-* Show number of cards each player holds
 
 ### Features to possibly add
 * Allow users to choose the variation of the rules they want while running the program
