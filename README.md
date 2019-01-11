@@ -37,7 +37,8 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 * Different number of points required to call Yaniv (ex. 5, 7, 9, 11)
 * Extra 20-point penalties to caller of Yaniv for every additional player who can call Assaf
 * Allow picking up any card in a set of 3-of-a-kind or 4-of-a-kind and not just the first or last (the rule still applies to series)
-Variations can be set by changing the defined macros at the beginning of the code
+
+#### Variations can be set by changing the defined macros at the beginning of the code
 
 ## What I plan to do next:
 
