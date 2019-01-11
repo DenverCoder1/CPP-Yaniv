@@ -402,26 +402,34 @@ int Yaniv::playGame() {
 
 void Yaniv::makePlayers() {
 	int numAI;
-	do {
+	while (true) {
 		cout << "How many humans? ";
 		cin >> numHuman;
 		numPlayers = numHuman;
-		if (!cin.good() || numPlayers < 0 || numPlayers > MAX_PLAYERS) {
+		if (cin.fail() || numPlayers < 0 || numPlayers > MAX_PLAYERS) {
 			cout << "The number of players must be between " << MIN_PLAYERS << " and "<< MAX_PLAYERS << "." << endl;
-			cin.clear();
+			cin.clear(); 
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
 		}
-		cin.ignore();
-	} while (numPlayers < 0 || numPlayers > MAX_PLAYERS);
-	do {
-		cout << "How many robots? ";
+		else {
+			cin.ignore();
+			break;
+		}
+	}
+	while (true) {
+		cout << "How many AIs? ";
 		cin >> numAI;
 		numPlayers = numHuman + numAI;
-		if (!cin.good() || numPlayers < MIN_PLAYERS || numPlayers > MAX_PLAYERS) {
+		if (cin.fail() || numPlayers < MIN_PLAYERS || numPlayers > MAX_PLAYERS) {
 			cout << "The number of players must be between " << MIN_PLAYERS << " and " << MAX_PLAYERS << "." << endl;
 			cin.clear();
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
 		}
-		cin.ignore();
-	} while (numPlayers < MIN_PLAYERS || numPlayers > MAX_PLAYERS);
+		else {
+			cin.ignore();
+			break;
+		}
+	}
 
 	remainingPlayers = numPlayers;
 
