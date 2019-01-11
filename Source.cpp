@@ -11,7 +11,7 @@
 using namespace std;
 
 /* NUMBERS */
-#define CARDS_AT_START 5 // cards each player is dealt
+#define CARDS_AT_START 1 // cards each player is dealt
 #define MIN_TO_CALL_YANIV 7 // minimum points to call Yaniv
 #define ASSAF_PENALTY 30 // penalty for being Assaf-ed
 #define EXTRA_ASSAF_PENALTIES 0 // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
@@ -51,6 +51,7 @@ public:
 	vector <string> discardPile;
 	vector <string> availableToTake;
 	vector <string> nextAvailableToTake;
+	vector <string> history;
 	vector <string> deck = {
 	"AC", "AH", "AS", "AD",
 	"2C", "2H", "2S", "2D",
@@ -158,6 +159,9 @@ int Yaniv::playGame() {
 	int winner;
 	char buffer[100];
 	while (true) {
+		if (history.size() >= players.size()) {
+			history.erase(history.begin());
+		}
 		Player* activePlayer = &players[currentPlayer];
 		if (!(*activePlayer).stillPlaying) { // if active player is out, skip to next player
 			changeTurn();
@@ -244,7 +248,7 @@ int Yaniv::playGame() {
 							}
 						}
 						// hide card from other players
-						drawnCard = "from draw pile";
+						drawnCard = "from the draw pile";
 					}
 					// if not, take smaller of face up cards
 					else {
@@ -259,6 +263,7 @@ int Yaniv::playGame() {
 					cout << " " + bestOfHand[i];
 					discards += bestOfHand[i] + " ";
 				}
+				trim(discards);
 				if (!checkDiscards((*activePlayer), discards)) {
 					cout << "ERROR IN DISCARD";
 				}
@@ -276,24 +281,37 @@ int Yaniv::playGame() {
 				// put discarded cards into availableToTake for next player
 				availableToTake = nextAvailableToTake;
 
+				string turn = (*activePlayer).name + " discarded " + discards + ", picked " + drawnCard + ", and now has " + to_string((*activePlayer).hand.size()) + ((*activePlayer).hand.size() == 1 ? " card." : " cards.");
+				history.push_back(turn);
+
 				cout << "Press enter to continue...";
 				cin.getline(buffer, 100);
 				changeTurn();
 			}
 		}
 		else { // if Human and still playing
+			
+		    // clear screen
+			clearScreen();
+
 			// hide cards if playing with others on-device
 			if (numHuman > 1) {
-				// clear screen print player number and wait for enter key
-				clearScreen();
+				// print player number and wait for enter key, clear screen
 				cout << (*activePlayer).name << "'s turn." << endl;
 				cout << "Press enter to display hand...";
 				cin.getline(buffer, 100);
+				clearScreen();
 			}
 
-			// clear screen, print player number, player's hand, and available cards
-			clearScreen();
+			// print current player, player's hand, and available cards
 			cout << (*activePlayer).name << "'s turn." << endl;
+
+			// inform player of round history
+			for (size_t i = 0; i < history.size(); i++) {
+				cout << history[i] << endl;
+			}
+			if (history.size()) { cout << endl; }
+
 			cout << "Your hand: ";
 			printVector((*activePlayer).hand);
 			cout << "Top of discard pile: ";
@@ -369,6 +387,9 @@ int Yaniv::playGame() {
 
 				// put discarded cards into availableToTake for next player
 				availableToTake = nextAvailableToTake;
+
+				string turn = (*activePlayer).name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string((*activePlayer).hand.size()) + ((*activePlayer).hand.size() == 1 ? " card." : " cards.");
+				history.push_back(turn);
 
 				cout << "Press enter to end turn...";
 				cin.getline(buffer, 100);
@@ -858,6 +879,7 @@ void Yaniv::resetRound(int winner) {
 	discardPile.clear();
 	availableToTake.clear();
 	nextAvailableToTake.clear();
+	history.clear();
 
 	// clear hands and deal cards
 	for (size_t i = 0; i < players.size(); i++) {
