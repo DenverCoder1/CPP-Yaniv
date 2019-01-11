@@ -1,20 +1,14 @@
 // C++ Yaniv Card Game
 // Yonah Lawrence
-// 8-10 January, 2019
+// 8-11 January, 2019
 // 
 
 #include <iostream>
 #include <string>
 #include <vector>
-#include <algorithm> // for find(), count()
-#include <ctime> // for rng
+#include <algorithm>
+#include <ctime>
 using namespace std;
-
-#if defined(_WIN32) || defined(WIN32)
-void clearScreen() { system("CLS"); }
-#else
-void clearScreen() { cout << string(50, '\n'); }
-#endif
 
 /* NUMBERS */
 #define CARDS_AT_START 5 // cards each player is dealt
@@ -30,6 +24,13 @@ void clearScreen() { cout << string(50, '\n'); }
 #define CAN_SWAP_JOKER true // if next player has the card that goes in place of the joker, they can swap for it
 #define CAN_TAKE_FROM_MIDDLE_OF_SET true // if 3 or 4-of-a-kind played, you can choose any
 #define REDUCTION_IS_HALF true // 50% reduction as opposed a 50-point reduction
+
+// Clear screen with "CLS" on Windows or with "\n" in other compilers
+#if defined(_WIN32) || defined(WIN32)
+void clearScreen() { system("CLS"); }
+#else
+void clearScreen() { cout << string(50, '\n'); }
+#endif
 
 struct Player {
 	bool AI = false;
