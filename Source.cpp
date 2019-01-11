@@ -16,12 +16,20 @@ void clearScreen() { system("CLS"); }
 void clearScreen() { cout << string(50, '\n'); }
 #endif
 
-#define CARDS_AT_START 5
-#define MIN_TO_CALL_YANIV 7
-#define MIN_PLAYERS 2
-#define MAX_PLAYERS 8
-#define ASSAF_PENALTY 30
-#define POINTS_LIMIT 200
+/* NUMBERS */
+#define CARDS_AT_START 5 // cards each player is dealt
+#define MIN_TO_CALL_YANIV 7 // minimum points to call Yaniv
+#define ASSAF_PENALTY 30 // penalty for being Assaf-ed
+#define EXTRA_ASSAF_PENALTIES 0 // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
+#define POINTS_LIMIT 200 // Score that eliminates players
+#define MIN_PLAYERS 2 // minimum number of players
+#define MAX_PLAYERS 8 // maximum number of players
+
+/* RULE VARIATIONS */
+#define CAN_SLAPDOWN true // if you draw from the draw pile the same type of card you just played, you can slap down your drawn card
+#define CAN_SWAP_JOKER true // if next player has the card that goes in place of the joker, they can swap for it
+#define CAN_TAKE_FROM_MIDDLE_OF_SET true // if 3 or 4-of-a-kind played, you can choose any
+#define REDUCTION_IS_HALF true // 50% reduction as opposed a 50-point reduction
 
 struct Player {
 	bool AI = false;
@@ -63,6 +71,7 @@ public:
 	void dealCards(Player&, int = 1);
 	void printVector(vector<string>);
 	bool checkDiscards(Player&, string);
+	string prevValue(string);
 	string nextValue(string&);
 	bool checkDraw(Player&, string);
 	string getValue(string);
@@ -110,7 +119,7 @@ int main() {
 	cout << endl;
 	cout << "## BONUS RULES ##" << endl;
 	cout << "* Slapdown: If you play a card or multiples of a card and draw from the draw pile, if the card is of the same value, you may quickly slap down the card onto the discard pile." << endl;
-	//cout << "* If a player plays a series with a Joker, even if it is in the middle of a series, if the next player has the card that belongs in the place of Joker, they may swap the card for the Joker as their turn. << endl;
+	cout << "* If a player plays a series with a Joker, even if it is in the middle of a series, if the next player has the card that belongs in the place of Joker, they may swap the card for the Joker as their turn." << endl;
 	cout << endl;
 
 	game.makePlayers();
@@ -157,9 +166,9 @@ int Yaniv::playGame() {
 			clearScreen();
 			cout << (*activePlayer).name << "'s turn." << endl;
 			sortCards(*activePlayer);
-			// if 7 or under, call Yaniv //
+			// if MIN_TO_CALL_YANIV or under, call Yaniv //
 			int points = countPoints((*activePlayer).hand);
-			if (points <= 7) {
+			if (points <= MIN_TO_CALL_YANIV) {
 				cout << (*activePlayer).name << " called Yaniv." << endl;
 				winner = callYaniv(*activePlayer, points);
 				if (remainingPlayers == 1) {
@@ -226,10 +235,12 @@ int Yaniv::playGame() {
 						(leftoverPts <= 7 && pointsForCard(nextAvailableToTake[0]) >= (8 - leftoverPts))) {
 						// take from draw pile
 						dealCards(*activePlayer);
-						// check for slapdown
-						drawnCard = (*activePlayer).hand.back();
-						if (getValue(drawnCard) == getValue(bestOfHand[1]) && getValue(drawnCard) == getValue(bestOfHand.back())) {
-							slapdown = drawnCard;
+						if (CAN_SLAPDOWN) {
+							// check for slapdown
+							drawnCard = (*activePlayer).hand.back();
+							if (getValue(drawnCard) == getValue(bestOfHand[1]) && getValue(drawnCard) == getValue(bestOfHand.back()) && drawnCard != "J") {
+								slapdown = drawnCard;
+							}
 						}
 						// hide card from other players
 						drawnCard = "from draw pile";
@@ -287,7 +298,7 @@ int Yaniv::playGame() {
 			cout << "Top of discard pile: ";
 			printVector(availableToTake);
 
-			// check if Yaniv
+			// check if can call Yaniv
 			bool calledYaniv = false;
 			int points = countPoints((*activePlayer).hand);
 			if (points <= MIN_TO_CALL_YANIV) {
@@ -416,7 +427,7 @@ void Yaniv::makePlayers() {
 
 			// check if name is valid (not taken and not blank)
 			bool nameTaken = false;
-			for (size_t j = 0; j < players.size(); j++) {
+			for (size_t j = 0; j < players.size() - 1; j++) {
 				if (players[j].name == name) {
 					nameTaken = true;
 					break;
@@ -499,6 +510,12 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 		}
 	}
 	
+	// if tried putting in 2 jokers when player only has 1
+	if (count(player.hand.begin(), player.hand.end(), "J") < count(cardsToDiscard.begin(), cardsToDiscard.end(), "J")) {
+		cout << "You don't have "<< count(cardsToDiscard.begin(), cardsToDiscard.end(), "J") << " Jokers." << endl;
+		return false;
+	}
+
 	// check if all values are the same
 	bool validDiscard = true;
 	string firstCardValue = getValue(cardsToDiscard[0]);
@@ -523,6 +540,7 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 				currCardValue = getValue(cardsToDiscard[i]);
 				firstCardSuit = getSuit(cardsToDiscard[i]);
 				start = i + 1;
+				break;
 			}
 		}
 		for (size_t i = start; i < cardsToDiscard.size(); i++) {
@@ -540,7 +558,16 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 				}
 			}
 			else {
-				nextValue(currCardValue); // skip value that is replaced by Joker
+				// skip value that is replaced by Joker
+				nextValue(currCardValue); 
+				// if next card is also Joker, skip a second time (ex. 7D J J 10D)
+				if (i != cardsToDiscard.size() - 1) {
+					if (cardsToDiscard[i + 1] == "J") {
+						nextValue(currCardValue);
+						i++;
+					}
+				}
+
 			}
 		}
 	}
@@ -561,6 +588,17 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 	}
 }
 
+string Yaniv::prevValue(string value) {
+	if (value == "J") { value = "10"; }
+	else if (value == "Q") { value = "J"; }
+	else if (value == "K") { value = "Q"; }
+	else if (value == "A") { value = "--"; }
+	else if (value == "10") { value = "9"; }
+	else if (value.at(0) >= '2') { --value.at(0); }
+	else if (value == "2") { value = "A"; }
+	return value;
+}
+
 string Yaniv::nextValue(string &value) {
 	if (value == "10") { value = "J"; }
 	else if (value == "J") { value = "Q"; }
@@ -573,17 +611,21 @@ string Yaniv::nextValue(string &value) {
 }
 
 bool Yaniv::checkDraw(Player &player, string draw) {
+	bool validDraw = false;
+	if (draw.size() == 0) { return false; }
 	if (draw.at(0) == 'D' && draw.length() == 1) {
 		// take from draw pile
 		dealCards(player);
 
-		// check for slapdown
-		string drawnCard = player.hand.back();
-		if (getValue(drawnCard) == getValue(nextAvailableToTake.front()) && getValue(drawnCard) == getValue(nextAvailableToTake.back())) {
-			cout << "The " << drawnCard << " you drew was slapped down!" << endl;
-			player.hand.pop_back(); // remove last card from hand
-			discardPile.push_back(drawnCard); // add to discard pile
-			nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
+		if (CAN_SLAPDOWN) {
+			// check for slapdown
+			string drawnCard = player.hand.back();
+			if (getValue(drawnCard) == getValue(nextAvailableToTake.front()) && getValue(drawnCard) == getValue(nextAvailableToTake.back()) && drawnCard != "J") {
+				cout << "The " << drawnCard << " you drew was slapped down!" << endl;
+				player.hand.pop_back(); // remove last card from hand
+				discardPile.push_back(drawnCard); // add to discard pile
+				nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
+			}
 		}
 
 		// sort and display hand
@@ -592,7 +634,36 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 		printVector(player.hand);
 		return true;
 	}
+	// if taking the first or last card that was played
 	else if (draw == availableToTake.front() || draw == availableToTake.back()) {
+		validDraw = true;
+	}
+	// if the cards down are multiples of the same card
+	else if (availableToTake.front() == availableToTake.back() && availableToTake.front() != "J") {
+		// if can take any card when multiples are played, and requested card is available
+		if (CAN_TAKE_FROM_MIDDLE_OF_SET && count(availableToTake.begin(), availableToTake.end(), draw)) {
+			validDraw = true;
+		}
+	}
+	// if the cards are a straight, you put 1 card down and are requesting a joker which exists in straight
+	else if (CAN_SWAP_JOKER && nextAvailableToTake.size() == 1 && draw == "J" && count(availableToTake.begin(), availableToTake.end(), "J")) {
+		// if card played is the joker's replacement
+		int JokerPos = find(availableToTake.begin(), availableToTake.end(), "J") - availableToTake.begin();
+		string cardPlayed = nextAvailableToTake.front(), nextCard = availableToTake[(JokerPos + 1)], prevCard = availableToTake[(JokerPos - 1)];
+		string cardPlayedValue = getValue(cardPlayed), nextCardValue = getValue(nextCard), prevCardValue = getValue(prevCard);
+		char cardPlayedSuit = getSuit(cardPlayed), nextCardSuit = getSuit(nextCard), prevCardSuit = getSuit(prevCard);
+		// if Joker is not the last card or first card
+		if (JokerPos != availableToTake.size() - 1 && JokerPos) {
+			// if next/prev card has same suit or is J AND next card has next value AND prev card has prev value
+			if ((nextCardSuit == cardPlayedSuit || nextCardSuit == 'J') &&
+			(prevCardSuit == cardPlayedSuit || prevCardSuit == 'J') &&
+			(prevCardValue == prevValue(cardPlayedValue)) &&
+			(nextCardValue == nextValue(cardPlayedValue))) {
+				validDraw = true;
+			}
+		}
+	}
+	if (validDraw) {
 		discardPile.erase(find(discardPile.begin(), discardPile.end(), draw));
 		player.hand.push_back(draw);
 		sortCards(player);
@@ -600,6 +671,7 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 		printVector(player.hand);
 		return true;
 	}
+	// if did not return true
 	cout << "You can't take that card." << endl;
 	return false;
 }
@@ -692,7 +764,7 @@ int Yaniv::callYaniv(Player &activePlayer, int activePlayerPoints) {
 	players[winner].pointsInRound = 0; // winner gets 0 for round
 	winners.push_back(winner); // add winner to potential players who can start next round (if only winner, they will start next round)
 
-	// if active player was Assaf-ed
+	// if active player was Assaf-ed, print Assaf-ers and deduct penalty
 	if (winner != currentPlayer) {
 		cout << players[currentPlayer].name << " was Assaf-ed by " << players[winner].name;
 		activePlayer.score += ASSAF_PENALTY; // penalty
@@ -700,16 +772,26 @@ int Yaniv::callYaniv(Player &activePlayer, int activePlayerPoints) {
 		// check if assaf was a tie
 		for (size_t i = 0; i < players.size(); i++) {
 			if (i != currentPlayer && i != winner && players[i].stillPlaying) { // if not caller of yaniv or declared winner with assaf
-				if (players[i].pointsInRound == lowestPts) { // if player has same amount as winner with assaf
+				// if playing with extra penalties, usually 20 extra points are deducted for additional Assafs
+				if (players[i].pointsInRound <= activePlayerPoints) {
 					cout << " and " << players[i].name; // add name to assaf list
+					activePlayer.score += EXTRA_ASSAF_PENALTIES; // default is 0, but some variations add 20 points here
+				}
+				if (players[i].pointsInRound == lowestPts) { // if player has same amount as winner with assaf
 					players[i].pointsInRound = 0; // also gets 0 for round
 					winners.push_back(i); // give potential for this player to be first player next round
 				}
 			}
 		}
 
-		cout << endl;
+		cout << "." << endl;
 	}
+
+	// print winners
+	cout << players[winners.front()].name << " ";
+	for (size_t i = 1; i < winners.size(); i++)
+		cout << "and " << players[winners[i]].name << " ";
+	cout << "won the round." << endl;
 
 	cout << endl << "SCOREBOARD:" << endl;
 
@@ -718,14 +800,15 @@ int Yaniv::callYaniv(Player &activePlayer, int activePlayerPoints) {
 		players[i].score += players[i].pointsInRound;
 		// if score is divisible by 50 and score increased (i.e. 50, 100, 150, 200), halve score
 		if (players[i].pointsInRound > 0 && players[i].score % 50 == 0) {
-			players[i].score /= 2;
+			if (REDUCTION_IS_HALF) { players[i].score /= 2; } // if true, halve score
+			else { players[i].score -= 50; } // if false, deduct 50
 			scoreHalved = true;
 		}
 		// print player's name and score
 		cout << players[i].name << ": " << players[i].score << " point" << (players[i].score != 1 ? "s" : "");
 		// add message if score was halved
 		if (scoreHalved) {
-			cout << " -- " << players[i].name << "'s score was halved!";
+			cout << " -- " << players[i].name << (REDUCTION_IS_HALF ? "'s score was halved!" : "'s score was deducted by 50!");
 		}
 		// knock players out of round if hit max
 		if (players[i].score > POINTS_LIMIT) {
