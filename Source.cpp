@@ -643,10 +643,30 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 			// check for slapdown
 			string drawnCard = player.hand.back();
 			if (getValue(drawnCard) == getValue(nextAvailableToTake.front()) && getValue(drawnCard) == getValue(nextAvailableToTake.back()) && drawnCard != "J") {
-				cout << "The " << drawnCard << " you drew was slapped down!" << endl;
-				player.hand.pop_back(); // remove last card from hand
-				discardPile.push_back(drawnCard); // add to discard pile
-				nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
+				// ask if user wants to do slapdown
+				char response;
+				while (true) {
+					cout << "Do you want to slap down the " << drawnCard << " you drew? (Y/N): ";
+					cin >> response;
+					response = toupper(response);
+					if (response == 'N') {
+						cin.ignore();
+						break;
+					}
+					else if (response == 'Y') {
+						cout << "The " << drawnCard << " you drew was slapped down!" << endl;
+						player.hand.pop_back(); // remove last card from hand
+						discardPile.push_back(drawnCard); // add to discard pile
+						nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
+						cin.ignore();
+						break;
+					}
+					else {
+						cout << "Your response must be 'Y' or 'N'." << endl;
+						cin.ignore();
+						cin.clear();
+					}
+				}
 			}
 		}
 
