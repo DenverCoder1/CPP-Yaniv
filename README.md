@@ -2,7 +2,7 @@
 
 Yaniv Card Game written in C++ that is played in the console.
 
-* You can choose 2 to 8 humans or AIs to play against each other on the same device.
+You can choose 2 to 8 humans or AIs to play against each other on the same device.
 
 ## How To Play
 
