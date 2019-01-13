@@ -42,9 +42,6 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 
 ## What I plan to do next:
 
-### Improvements to AI:
-* Assaf suspicion - Prevent AI from calling Yaniv if it suspects a player may have fewer points based on the cards they have picked up publicly and the number of cards in their hand
-
 ### Features to possibly add
 * Allow users to choose the variation of the rules they want while running the program
 * Allow user to undo their discard before they draw their card
