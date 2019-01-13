@@ -1,6 +1,6 @@
 // C++ Yaniv Card Game
 // Yonah Lawrence
-// 8-11 January, 2019
+// 8-13 January, 2019
 // 
 
 #include <iostream>
@@ -11,7 +11,7 @@
 using namespace std;
 
 /* NUMBERS */
-#define CARDS_AT_START 3 // cards each player is dealt
+#define CARDS_AT_START 5 // cards each player is dealt
 #define MIN_TO_CALL_YANIV 7 // minimum points to call Yaniv
 #define ASSAF_PENALTY 30 // penalty for being Assaf-ed
 #define EXTRA_ASSAF_PENALTIES 0 // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
