@@ -10,20 +10,21 @@
 #include <ctime>
 using namespace std;
 
-/* NUMBERS */
-#define CARDS_AT_START 5 // cards each player is dealt
-#define MIN_TO_CALL_YANIV 7 // minimum points to call Yaniv
-#define ASSAF_PENALTY 30 // penalty for being Assaf-ed
-#define EXTRA_ASSAF_PENALTIES 0 // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
-#define POINTS_LIMIT 200 // Score that eliminates players
 #define MIN_PLAYERS 2 // minimum number of players
 #define MAX_PLAYERS 8 // maximum number of players
 
+/* NUMBERS */
+int CARDS_AT_START = 5; // cards each player is dealt
+int MIN_TO_CALL_YANIV = 7; // minimum points to call Yaniv
+int ASSAF_PENALTY = 30; // penalty for being Assaf-ed
+int EXTRA_ASSAF_PENALTIES = 0; // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
+int POINTS_LIMIT = 200; // Score that eliminates players
+
 /* RULE VARIATIONS */
-#define CAN_SLAPDOWN true // if you draw from the draw pile the same type of card you just played, you can slap down your drawn card
-#define CAN_SWAP_JOKER true // if next player has the card that goes in place of the joker, they can swap for it
-#define CAN_TAKE_FROM_MIDDLE_OF_SET true // if 3 or 4-of-a-kind played, you can choose any
-#define REDUCTION_IS_HALF true // 50% reduction as opposed a 50-point reduction
+bool CAN_SLAPDOWN = true; // if you draw from the draw pile the same type of card you just played, you can slap down your drawn card
+bool CAN_SWAP_JOKER = true; // if next player has the card that goes in place of the joker, they can swap for it
+bool CAN_TAKE_FROM_MIDDLE_OF_SET = true; // if 3-of-a-kind or 4-of-a-kind played, the next player may take any card from the set
+bool REDUCTION_IS_HALF = true; // 50% reduction as opposed a 50-point reduction
 
 // Clear screen with "CLS" on Windows or with "\n" in other compilers
 #if defined(_WIN32) || defined(WIN32)
@@ -93,6 +94,8 @@ public:
 };
 
 void trim(string &str);
+void getPositiveNum(int &response, string request);
+bool getYesOrNoResponse(bool &response, string request);
 
 int main() {
 	// for random number generation
@@ -106,9 +109,9 @@ int main() {
 	cout << "## OBJECT AND SCORING ##" << endl;
 	cout << "* Jokers are 0 points, Aces are 1, 2-10 are their value, and face cards are 10." << endl;
 	cout << "* The object of the game is to be the player with the fewest points in their hand at the end of each round." << endl;
-	cout << "* When a player has 7 or fewer points in their hand, they may end the round their next turn by calling \"Yaniv.\"" << endl;
-	cout << "* If anyone has an equal or lower score in their hand when someone calls \"Yaniv,\" they call \"Assaf\" and win the round." << endl;
-	cout << "* A 30-point penalty is added to the sum of the player who got \'Assaf-ed\'." << endl;
+	cout << "* When a player has 7 or fewer points in their hand, they may end the round their next turn by calling Yaniv." << endl;
+	cout << "* If anyone has an equal or lower score in their hand when someone calls Yaniv, they call Assaf and win the round." << endl;
+	cout << "* A 30-point penalty is added to the sum of the player who got Assaf-ed." << endl;
 	cout << "* At the end of each round, the points each non-winner has in their hand are added to their cumulative score." << endl;
 	cout << "* When a player reaches over 200 points, they are eliminated." << endl;
 	cout << "* If a player's score lands on an exact multiple of 50 (ex. 50, 100, 150, 200), their score is divided in half." << endl;
@@ -119,7 +122,7 @@ int main() {
 	cout << "* A set can be either multiples (ex. 2, 3, or 4-of-a-kind) or a series of 3 or more consecutive cards of the same suit." << endl;
 	cout << "* A Joker can be used as a wild-card in a series in place of a missing number (ex. 4H J 6H)." << endl;
 	cout << "* When drawing a card from the last thrown cards, only the first or last card in the set can be drawn." << endl;
-	cout << "* When a player has 7 or fewer points in their hand at the start of their turn, they may call \"Yaniv\" and end the round." << endl;
+	cout << "* When a player has 7 or fewer points in their hand at the start of their turn, they may call Yaniv and end the round." << endl;
 	cout << endl;
 	cout << "## BONUS RULES ##" << endl;
 	cout << "* Slapdown: If you play a card or multiples of a card and draw from the draw pile, if the card is of the same value, you may quickly slap down the card onto the discard pile." << endl;
@@ -134,23 +137,12 @@ int main() {
 		int winner = game.playGame();
 
 		// ask if user wants to start another game
-		char response;
-		while (true) {
-			cout << "Do you want to play again? (Y/N): ";
-			cin >> response;
-			response = toupper(response);
-			if (response == 'N') {
-				return 0; // end program
-			}
-			else if (response == 'Y') {
-				game.resetGame(winner); // reset scores, deck, and game
-				cin.ignore();
-				break;
-			}
-			else {
-				cout << "Your response must be 'Y' or 'N'." << endl;
-				cin.clear();
-			}
+		bool response;
+		if (getYesOrNoResponse(response, "Do you want to play again? (Y/N): ")) {
+			game.resetGame(winner); // reset scores, deck, and game
+		}
+		else {
+			return 0; // end program
 		}
 	}
 
@@ -248,7 +240,7 @@ int Yaniv::playGame() {
 					drawnCard = bestWithTaking.front();
 					discardPile.erase(find(discardPile.begin(), discardPile.end(), bestWithTaking.front()));
 					activePlayer->hand.push_back(bestWithTaking.front());
-					activePlayer->cardsDrawnPublicly.push_back(bestWithTaking.front());
+					activePlayer->cardsDrawnPublicly.push_back(activePlayer->hand.back());
 					sortCards(activePlayer->hand);
 				}
 				else {
@@ -270,7 +262,7 @@ int Yaniv::playGame() {
 							drawnCard = bestOfSavedWithTaking.front();
 							discardPile.erase(find(discardPile.begin(), discardPile.end(), bestOfSavedWithTaking.front()));
 							activePlayer->hand.push_back(bestOfSavedWithTaking.front());
-							activePlayer->cardsDrawnPublicly.push_back(bestOfSavedWithTaking.front());
+							activePlayer->cardsDrawnPublicly.push_back(activePlayer->hand.back());
 							sortCards(activePlayer->hand);
 							drawnCardAlready = true;
 						}
@@ -300,7 +292,7 @@ int Yaniv::playGame() {
 							drawnCard = nextAvailableToTake[0];
 							discardPile.erase(find(discardPile.begin(), discardPile.end(), nextAvailableToTake[0]));
 							activePlayer->hand.push_back(nextAvailableToTake[0]); // take from discard
-							activePlayer->cardsDrawnPublicly.push_back(nextAvailableToTake[0]);
+							activePlayer->cardsDrawnPublicly.push_back(activePlayer->hand.back());
 						}
 					}
 				}
@@ -368,24 +360,9 @@ int Yaniv::playGame() {
 			bool calledYaniv = false;
 			int points = countPoints(activePlayer->hand);
 			if (points <= MIN_TO_CALL_YANIV) {
-				char response;
-				while (true) {
-					cout << "Do you want to call Yaniv? (Y/N): ";
-					cin >> response;
-					response = toupper(response);
-					if (response == 'N') {
-						cin.ignore();
-						break;
-					}
-					else if (response == 'Y') {
-						calledYaniv = true;
-						cin.ignore();
-						break;
-					}
-					else {
-						cout << "Your response must be 'Y' or 'N'." << endl;
-						cin.clear();
-					}
+				bool response;
+				if (getYesOrNoResponse(response, "Do you want to call Yaniv? (Y/N): ")) {
+					calledYaniv = true;
 				}
 			}
 
@@ -448,6 +425,33 @@ int Yaniv::playGame() {
 }
 
 void Yaniv::makePlayers() {
+	bool response;
+
+	// Set up rule variations
+	if (!getYesOrNoResponse(response, "Do you want to use the default rules? (Y/N): ")) {
+		/* NUMBERS */
+		cout << "How many cards should each player be dealt? (Default: 5) " << endl;
+		getPositiveNum(CARDS_AT_START, "Enter a positive number of cards: "); // cards each player is dealt
+		cout << "What is the most points with which one can call Yaniv? (Default: 7) " << endl;
+		getPositiveNum(MIN_TO_CALL_YANIV, "Enter a positive number of points: "); // minimum points to call Yaniv
+		cout << "How many points does a player who is Assaf-ed receive as a penalty? (Default: 30) " << endl;
+		getPositiveNum(ASSAF_PENALTY, "Enter a positive number of points: "); // penalty for being Assaf-ed
+		cout << "How many extra points are given for each additional player who can call Assaf? (Default: 0) " << endl;
+		getPositiveNum(EXTRA_ASSAF_PENALTIES, "Enter a positive number of points: "); // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
+		cout << "How many points can a player receive before being eliminated? (Default: 200) " << endl;
+		getPositiveNum(POINTS_LIMIT, "Enter a positive number of points: "); // Score that eliminates players
+
+		/* RULE VARIATIONS */
+		cout << "If a card of the same type that was played is drawn, can it be slapped down? (Default: Y) " << endl;
+		getYesOrNoResponse(CAN_SLAPDOWN, "Enter 'Y' to allow slap-downs or 'N' to disallow: "); // if you draw from the draw pile the same type of card you just played, you can slap down your drawn card
+		cout << "If a player plays a series with a joker, can the next player swap the card it substitutes for the joker? (Default: Y) " << endl;
+		getYesOrNoResponse(CAN_SWAP_JOKER, "Enter 'Y' to allow swapping for jokers or 'N' to disallow: "); // if next player has the card that goes in place of the joker, they can swap for it
+		cout << "If a player plays 3 or 4-of-a-kind is the next player allowed to take any card from the set they want? (Default: Y) " << endl;
+		getYesOrNoResponse(CAN_TAKE_FROM_MIDDLE_OF_SET, "Enter 'Y' to allow taking from middle of multiples sets or 'N' to disallow: "); // if 3-of-a-kind or 4-of-a-kind played, the next player may take any card from the set
+		cout << "When a player lands on a multiple of 50, are half of the points removed? (Default: Y) " << endl;
+		getYesOrNoResponse(REDUCTION_IS_HALF, "Enter 'Y' to remove HALF or 'N' to remove 50 POINTS on multiples of 50: "); // 50% reduction as opposed a 50-point reduction
+	}
+
 	int numAI;
 	while (true) {
 		cout << "How many humans? ";
@@ -481,7 +485,7 @@ void Yaniv::makePlayers() {
 	remainingPlayers = numPlayers;
 
 	// shuffle cards for extra randomness
-	random_shuffle(deck.begin(), deck.end());
+	std::random_shuffle(deck.begin(), deck.end());
 
 	// make players array and deal 5 cards to each
 	for (int i = 0; i < numPlayers; i++) {
@@ -702,28 +706,13 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 			string drawnCard = player.hand.back();
 			if (getValue(drawnCard) == getValue(nextAvailableToTake.front()) && getValue(drawnCard) == getValue(nextAvailableToTake.back()) && drawnCard != "J") {
 				// ask if user wants to do slapdown
-				char response;
-				while (true) {
-					cout << "Do you want to slap down the " << drawnCard << " you drew? (Y/N): ";
-					cin >> response;
-					response = toupper(response);
-					if (response == 'N') {
-						cin.ignore();
-						break;
-					}
-					else if (response == 'Y') {
-						cout << "The " << drawnCard << " you drew was slapped down!" << endl;
-						player.hand.pop_back(); // remove last card from hand
-						discardPile.push_back(drawnCard); // add to discard pile
-						nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
-						cin.ignore();
-						break;
-					}
-					else {
-						cout << "Your response must be 'Y' or 'N'." << endl;
-						cin.ignore();
-						cin.clear();
-					}
+				bool response;
+				string request = "Do you want to slap down the " + drawnCard + " you drew? (Y/N): ";
+				if (getYesOrNoResponse(response, request)) {
+					cout << "The " << drawnCard << " you drew was slapped down!" << endl;
+					player.hand.pop_back(); // remove last card from hand
+					discardPile.push_back(drawnCard); // add to discard pile
+					nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
 				}
 			}
 		}
@@ -939,7 +928,7 @@ void Yaniv::resetGame(int winner) {
 
 void Yaniv::resetRound(int winner) {
 	deck = FULL_DECK;
-	random_shuffle(deck.begin(), deck.end());
+	std::random_shuffle(deck.begin(), deck.end());
 	currentPlayer = winner;
 	discardPile.clear();
 	availableToTake.clear();
@@ -949,6 +938,7 @@ void Yaniv::resetRound(int winner) {
 	// clear hands and deal cards
 	for (size_t i = 0; i < players.size(); i++) {
 		players[i].hand.clear();
+		players[i].cardsDrawnPublicly.clear();
 		dealCards(players[i], CARDS_AT_START);
 		sortCards(players[i].hand);
 	}
@@ -1130,4 +1120,43 @@ void trim(string &str) {
 	// Remove all spaces from the end of the string.
 	while (str.size() && isspace(str.back()))
 		str.pop_back();
+}
+
+void getPositiveNum(int &response, string request) {
+	while (true) {
+		cout << request;
+		cin >> response;
+		if (cin.fail() || response < 0) {
+			cout << "Your response must be a positive number." << endl;
+			cin.clear();
+			cin.ignore(numeric_limits<streamsize>::max(), '\n');
+		}
+		else {
+			cin.ignore();
+			return;
+		}
+	}
+}
+
+bool getYesOrNoResponse(bool &response, string request) {
+	// ask if user wants to start another game
+	char yesNoResponse;
+	while (true) {
+		cout << request;
+		cin >> yesNoResponse;
+		yesNoResponse = toupper(yesNoResponse);
+		if (yesNoResponse == 'N') {
+			response = false;
+			return false;
+		}
+		else if (yesNoResponse == 'Y') {
+			response = true;
+			cin.ignore();
+			return true;
+		}
+		else {
+			cout << "Your response must be 'Y' or 'N'." << endl;
+			cin.clear();
+		}
+	}
 }
