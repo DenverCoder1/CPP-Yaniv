@@ -43,7 +43,6 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 ## What I plan to do next:
 
 ### Features to possibly add
-* Allow users to choose the variation of the rules they want while running the program
 * Allow user to undo their discard before they draw their card
 
 ### Design improvements
