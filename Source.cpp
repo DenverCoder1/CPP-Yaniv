@@ -11,7 +11,7 @@
 using namespace std;
 
 /* NUMBERS */
-#define CARDS_AT_START 5 // cards each player is dealt
+#define CARDS_AT_START 3 // cards each player is dealt
 #define MIN_TO_CALL_YANIV 7 // minimum points to call Yaniv
 #define ASSAF_PENALTY 30 // penalty for being Assaf-ed
 #define EXTRA_ASSAF_PENALTIES 0 // additional penalties for each additional player who can Assaf you (usually 20 pts when applied)
@@ -39,6 +39,7 @@ struct Player {
 	int score = 0;
 	int pointsInRound = 0;
 	bool stillPlaying = true;
+	vector <string> cardsDrawnPublicly; // to help AI suspect Assaf
 };
 
 class Yaniv {
@@ -172,9 +173,40 @@ int Yaniv::playGame() {
 			clearScreen();
 			cout << activePlayer->name << "'s turn." << endl;
 			sortCards(activePlayer->hand);
-			// if MIN_TO_CALL_YANIV or under, call Yaniv //
+
+			// figure out average value of cards not in AI's hand or discard pile
+			vector <string> unknowns = deck;
+			for (size_t i = 0; i < players.size(); i++) {
+				if (i != currentPlayer)
+					unknowns.insert(unknowns.end(), players[i].hand.begin(), players[i].hand.end());
+			}
+			int sumOfUnknowns = 0;
+			for (size_t i = 0; i < unknowns.size(); i++)
+				sumOfUnknowns += pointsForCard(unknowns[i]);
+			float averageOfUnknowns = (float) sumOfUnknowns / unknowns.size();
+
+			// if MIN_TO_CALL_YANIV or under, call Yaniv unless suspects assaf//
 			int points = countPoints(activePlayer->hand);
+			bool suspectsAssaf = false;
+			// check if has Yaniv
 			if (points <= MIN_TO_CALL_YANIV) {
+				// if the publicly drawn cards of a player add up to less than what AI has, suspect Assaf
+				// if player has cards AI does not know the value of, multiply the number by half the average of unseen cards
+				for (size_t i = 0; i < players.size(); i++) {
+					if (i != currentPlayer) {
+						// number of points player has in hand from publicly drawn cards
+						int publiclyDrawnPts = countPoints(players[i].cardsDrawnPublicly);
+						// get number of cards player holds that are not publicly drawn (and values are unknown to AI)
+						int numUnknownCards = players[i].hand.size() - players[i].cardsDrawnPublicly.size();
+						// if estimated player's points are less than or equal to AI's points, suspect Assaf and don't call Yaniv
+						if (publiclyDrawnPts + (numUnknownCards * (averageOfUnknowns / 2)) <= points) {
+							suspectsAssaf = true;
+							break;
+						}
+					}
+				}
+			}
+			if (points <= MIN_TO_CALL_YANIV && !suspectsAssaf) {
 				cout << activePlayer->name << " called Yaniv." << endl;
 				winner = callYaniv(*activePlayer, points);
 				if (remainingPlayers == 1) {
@@ -184,7 +216,6 @@ int Yaniv::playGame() {
 				cout << "Press enter to start next round...";
 				cin.getline(buffer, 100);
 				resetRound(winner);
-				/// check if certain that player has fewer///
 			}
 			else {
 				string slapdown = "";
@@ -217,6 +248,7 @@ int Yaniv::playGame() {
 					drawnCard = bestWithTaking.front();
 					discardPile.erase(find(discardPile.begin(), discardPile.end(), bestWithTaking.front()));
 					activePlayer->hand.push_back(bestWithTaking.front());
+					activePlayer->cardsDrawnPublicly.push_back(bestWithTaking.front());
 					sortCards(activePlayer->hand);
 				}
 				else {
@@ -238,26 +270,13 @@ int Yaniv::playGame() {
 							drawnCard = bestOfSavedWithTaking.front();
 							discardPile.erase(find(discardPile.begin(), discardPile.end(), bestOfSavedWithTaking.front()));
 							activePlayer->hand.push_back(bestOfSavedWithTaking.front());
+							activePlayer->cardsDrawnPublicly.push_back(bestOfSavedWithTaking.front());
 							sortCards(activePlayer->hand);
 							drawnCardAlready = true;
 						}
 					}
 
 					if (!drawnCardAlready) {
-						// if average of non-held/discarded cards is lower than left and right available discard, take from deck //
-						// figure out average value of cards not in AI's hand or discard pile
-						vector <string> unknowns = deck;
-						for (size_t i = 0; i < players.size(); i++) {
-							if (i != currentPlayer) {
-								unknowns.insert(unknowns.end(), players[i].hand.begin(), players[i].hand.end());
-							}
-						}
-						int sumOfUnknowns = 0;
-						for (size_t i = 0; i < unknowns.size(); i++) {
-							sumOfUnknowns += pointsForCard(unknowns[i]);
-						}
-						int averageOfUnknowns = sumOfUnknowns / unknowns.size();
-
 						// take from draw pile if:
 						// EITHER average of unknowns is less than the lower of available cards (left card is always smaller or equal to right card)
 						// OR your hand is very low, gamble for a card lower than available
@@ -281,6 +300,7 @@ int Yaniv::playGame() {
 							drawnCard = nextAvailableToTake[0];
 							discardPile.erase(find(discardPile.begin(), discardPile.end(), nextAvailableToTake[0]));
 							activePlayer->hand.push_back(nextAvailableToTake[0]); // take from discard
+							activePlayer->cardsDrawnPublicly.push_back(nextAvailableToTake[0]);
 						}
 					}
 				}
@@ -636,6 +656,9 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 			discardPile.push_back(discardV[i]);
 			nextAvailableToTake.push_back(discardV[i]);
 			player.hand.erase(find(player.hand.begin(), player.hand.end(), discardV[i]));
+			if (count(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), discardV[i])) {
+				player.cardsDrawnPublicly.erase(find(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), discardV[i]));
+			}
 		}
 		return true;
 	}
@@ -743,6 +766,7 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 	if (validDraw) {
 		discardPile.erase(find(discardPile.begin(), discardPile.end(), draw));
 		player.hand.push_back(draw);
+		player.cardsDrawnPublicly.push_back(draw);
 		sortCards(player.hand);
 		cout << "Your hand: ";
 		printVector(player.hand);
