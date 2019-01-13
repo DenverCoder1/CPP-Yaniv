@@ -42,8 +42,5 @@ Demo: https://repl.it/repls/DarkgrayLankyDominspector
 
 ## What I plan to do next:
 
-### Features to possibly add
-* Allow user to undo their discard before they draw their card
-
 ### Design improvements
 * Form the shape of cards when printing instead of printing as text
