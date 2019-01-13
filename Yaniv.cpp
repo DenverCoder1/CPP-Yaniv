@@ -68,7 +68,7 @@ public:
 		"JC", "JH", "JS", "JD",
 		"QC", "QH", "QS", "QD",
 		"KC", "KH", "KS", "KD",
-		"J", "J"
+		"J", "J",
 	};
 	vector <string> deck = FULL_DECK;
 	int playGame();
@@ -199,6 +199,7 @@ int Yaniv::playGame() {
 				}
 			}
 			if (points <= MIN_TO_CALL_YANIV && !suspectsAssaf) {
+				clearScreen();
 				cout << activePlayer->name << " called Yaniv." << endl;
 				winner = callYaniv(*activePlayer, points);
 				if (remainingPlayers == 1) {
@@ -216,8 +217,7 @@ int Yaniv::playGame() {
 				string discards = "";
 				string drawnCard = "";
 				vector <string> bestOfHand = getBestDiscard(activePlayer->hand);
-				cout << "Your hand: "; // for debug
-				printVector(activePlayer->hand); // for debug
+	
 				cout << "Top of discard pile: ";
 				printVector(nextAvailableToTake);
 				vector <string> bestWithTaking = getBestDiscard(activePlayer->hand, nextAvailableToTake);
@@ -368,6 +368,7 @@ int Yaniv::playGame() {
 
 			// if called Yaniv
 			if (calledYaniv) {
+				clearScreen();
 				cout << activePlayer->name << " called Yaniv." << endl;
 				winner = callYaniv((*activePlayer), points);
 				if (remainingPlayers == 1) {
@@ -379,41 +380,66 @@ int Yaniv::playGame() {
 				resetRound(winner);
 			}
 			else {
-				// discard cards
-				string discards;
-				while (true) {
-					cout << "Which cards do you want to discard? ";
-					getline(cin, discards);
-					trim(discards);
-					transform(discards.begin(), discards.end(), discards.begin(), ::toupper);
-					if (checkDiscards((*activePlayer), discards)) {
-						cout << "Your hand: ";
-						printVector(activePlayer->hand);
-						break;
+				bool undo = false;
+				do {
+					// backup in case of undo
+					vector <string> nextAvailableToTakeCopy = nextAvailableToTake;
+					vector <string> discardPileCopy = discardPile;
+					vector <string> historyCopy = history;
+					Player playerCopy = *activePlayer;
+
+					// discard cards
+					string discards;
+					while (true) {
+						cout << "Which cards do you want to discard? ";
+						getline(cin, discards);
+						trim(discards);
+						transform(discards.begin(), discards.end(), discards.begin(), ::toupper);
+						if (checkDiscards((*activePlayer), discards)) {
+							cout << "Your hand: ";
+							printVector(activePlayer->hand);
+							break;
+						}
 					}
-				}
 
-				// display available cards
-				cout << "Top of discard pile: ";
-				printVector(availableToTake);
+					// display available cards
+					cout << "Top of discard pile: ";
+					printVector(availableToTake);
 
-				// choose card to draw
-				string draw;
-				while (true) {
-					cout << "Which card do you want to draw (type 'D' for draw pile)? ";
-					getline(cin, draw);
-					trim(draw);
-					transform(draw.begin(), draw.end(), draw.begin(), ::toupper);
-					if (checkDraw(players[currentPlayer], draw)) {
-						break;
+					// choose card to draw
+					string draw;
+					while (true) {
+						cout << "Which card do you want to draw (type 'D' for draw pile)? ";
+						getline(cin, draw);
+						trim(draw);
+						transform(draw.begin(), draw.end(), draw.begin(), ::toupper);
+						if (draw == "UNDO") {
+							nextAvailableToTake = nextAvailableToTakeCopy;
+							discardPile = discardPileCopy;
+							history = historyCopy;
+							*activePlayer = playerCopy;
+							cout << "Your hand: ";
+							printVector(activePlayer->hand);
+							cout << "Top of discard pile: ";
+							printVector(availableToTake);
+							undo = true;
+							break;
+						}
+						if (checkDraw(players[currentPlayer], draw)) {
+							undo = false;
+							break;
+						}
 					}
-				}
 
-				// put discarded cards into availableToTake for next player
-				availableToTake = nextAvailableToTake;
+					if (!undo) {
+						// put discarded cards into availableToTake for next player
+						availableToTake = nextAvailableToTake;
 
-				string turn = activePlayer->name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
-				history.push_back(turn);
+						string turn = activePlayer->name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+						history.push_back(turn);
+					}
+
+				} while (undo == true);
 
 				cout << "Press enter to end turn...";
 				cin.getline(buffer, 100);
@@ -567,11 +593,12 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 		return false; // if discards is blank
 	}
 	vector <string> cardsToDiscard;
-	vector <string> discardV;
 	string currCard;
 	for (size_t i = 0; i < discards.length() + 1; i++) {
 		if (discards[i] == ' ' || discards[i] == '\0') {
-			discardV.push_back(currCard);
+			if (currCard.length()) {
+				cardsToDiscard.push_back(currCard);
+			}
 			currCard = "";
 		}
 		else {
@@ -579,30 +606,20 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 		}
 	}
 
-	for (size_t i = 0; i < discardV.size(); i++) {
-		if (discardV[i].length()) {
-			if (!count(player.hand.begin(), player.hand.end(), discardV[i])) {
-				cout << "You don't have " << discardV[i] << "." << endl;
-				return false;
-			}
-			else {
-				cardsToDiscard.push_back(discardV[i]);
-			}
+	for (size_t i = 0; i < cardsToDiscard.size(); i++) {
+		// if number of given card in hand is less than number in list to discard (ex. tried giving 2 J's when only has 1 or tried giving card that player doesn't have)
+		if (count(player.hand.begin(), player.hand.end(), cardsToDiscard[i]) < count(cardsToDiscard.begin(), cardsToDiscard.end(), cardsToDiscard[i])) {
+			cout << "You don't have " << cardsToDiscard[i] << "." << endl;
+			return false;
 		}
-	}
-
-	// if tried putting in 2 jokers when player only has 1
-	if (count(player.hand.begin(), player.hand.end(), "J") < count(cardsToDiscard.begin(), cardsToDiscard.end(), "J")) {
-		cout << "You don't have " << count(cardsToDiscard.begin(), cardsToDiscard.end(), "J") << " Jokers." << endl;
-		return false;
 	}
 
 	// check if all values are the same
 	bool validDiscard = true;
 	string firstCardValue = getValue(cardsToDiscard[0]);
 	for (size_t i = 1; i < cardsToDiscard.size(); i++) {
-		// if value on any remaining card is not the same as the first
-		if (getValue(cardsToDiscard[i]) != firstCardValue) {
+		// if value on any remaining card is not the same as the first (and not a joker)
+		if (getValue(cardsToDiscard[i]) != firstCardValue && getValue(cardsToDiscard[i]) != "") {
 			validDiscard = false;
 			break;
 		}
@@ -657,11 +674,11 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 	if (validDiscard) {
 		nextAvailableToTake.clear(); // clear available to take and refill with discards
 		for (size_t i = 0; i < cardsToDiscard.size(); i++) {
-			discardPile.push_back(discardV[i]);
-			nextAvailableToTake.push_back(discardV[i]);
-			player.hand.erase(find(player.hand.begin(), player.hand.end(), discardV[i]));
-			if (count(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), discardV[i])) {
-				player.cardsDrawnPublicly.erase(find(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), discardV[i]));
+			discardPile.push_back(cardsToDiscard[i]);
+			nextAvailableToTake.push_back(cardsToDiscard[i]);
+			player.hand.erase(find(player.hand.begin(), player.hand.end(), cardsToDiscard[i]));
+			if (count(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), cardsToDiscard[i])) {
+				player.cardsDrawnPublicly.erase(find(player.cardsDrawnPublicly.begin(), player.cardsDrawnPublicly.end(), cardsToDiscard[i]));
 			}
 		}
 		return true;
@@ -1033,6 +1050,7 @@ vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availa
 			string firstCardValue;
 			char firstCardSuit;
 			int unusedJokers = numJokers;
+			int pointsForSeries = 0;
 			savedCards = hand;
 			discard.clear();
 			// Get suit and value of first card that's NOT a Joker
@@ -1042,6 +1060,7 @@ vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availa
 					firstCardSuit = getSuit(hand[i]);
 					discard.push_back(hand[i]);
 					savedCards.erase(savedCards.begin()+i);
+					pointsForSeries += pointsForCard(hand[i]);
 					k = i;
 					break;
 				}
@@ -1055,12 +1074,14 @@ vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availa
 				if (count(hand.begin() + k, hand.end(), nextCard)) {
 					discard.push_back(nextCard);
 					savedCards.erase(find(savedCards.begin(), savedCards.end(), nextCard));
+					pointsForSeries += pointsForCard(nextCard);
 				}
 				// if don't have the right card and can use joker (and last card was not a king)
 				else if (unusedJokers > 0 && getValue(nextCard) != "-") {
 					--unusedJokers;
 					discard.push_back("J");
 					savedCards.erase(savedCards.begin());
+					pointsForSeries += (pointsForCard(nextCard) / 2);
 				}
 				// if last card was a king, have a joker, and don't already have 3 cards to discard
 				else if (unusedJokers > 0 && getValue(nextCard) != "-" && discard.size() < 3) {
@@ -1084,11 +1105,11 @@ vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availa
 			}
 			if (savedCards.size() == 0) { savedCards.push_back(""); }
 			// if taking to make a series and highest card you can discard is a joker
-			if ((savedCards.back() == "J" && takingFromDiscard)) {
+			if ((savedCards.back() == "J" && availableCards.front() != "" && draw != "J")) {
 				discard.clear(); // don't discard joker to make series
 			}
 			if (discard.size() >= 3) {
-				int pointsForSeries = countPoints(discard);
+				//int pointsForSeries = countPoints(discard);
 				if (draw == "J") { pointsForSeries += 99; } // if can draw a joker, always do it
 				if (pointsForSeries > bestDiscardPts) {
 					bestDiscardPts = pointsForSeries;
@@ -1147,6 +1168,7 @@ bool getYesOrNoResponse(bool &response, string request) {
 		yesNoResponse = toupper(yesNoResponse);
 		if (yesNoResponse == 'N') {
 			response = false;
+			cin.ignore();
 			return false;
 		}
 		else if (yesNoResponse == 'Y') {
@@ -1157,6 +1179,7 @@ bool getYesOrNoResponse(bool &response, string request) {
 		else {
 			cout << "Your response must be 'Y' or 'N'." << endl;
 			cin.clear();
+			cin.ignore();
 		}
 	}
 }
