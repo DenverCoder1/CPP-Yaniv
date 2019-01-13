@@ -52,22 +52,38 @@ public:
 	vector <string> availableToTake;
 	vector <string> nextAvailableToTake;
 	vector <string> history;
-	vector <string> deck = {
-	"AC", "AH", "AS", "AD",
-	"2C", "2H", "2S", "2D",
-	"3C", "3H", "3S", "3D",
-	"4C", "4H", "4S", "4D",
-	"5C", "5H", "5S", "5D",
-	"6C", "6H", "6S", "6D",
-	"7C", "7H", "7S", "7D",
-	"8C", "8H", "8S", "8D",
-	"9C", "9H", "9S", "9D",
-	"10C", "10H", "10S", "10D",
-	"JC", "JH", "JS", "JD",
-	"QC", "QH", "QS", "QD",
-	"KC", "KH", "KS", "KD",
-	"J", "J"
+	vector <string> FULL_DECK = {
+		//"AC", "AH", "AS", "AD",
+		//"2C", "2H", "2S", "2D",
+		//"3C", "3H", "3S", "3D",
+		//"4C", "4H", "4S", "4D",
+		//"5C", "5H", "5S", "5D",
+		//"6C", "6H", "6S", "6D",
+		//"7C", "7H", "7S", "7D",
+		//"8C", "8H", "8S", "8D",
+		//"9C", "9H", "9S", "9D",
+		//"10C", "10H", "10S", "10D",
+		//"JC", "JH", "JS", "JD",
+		//"QC", "QH", "QS", "QD",
+		//"KC", "KH", "KS", "KD",
+		//"J", "J"
+
+		"5D", "5D", "5D", "5D",
+		"6D", "6D", "6D", "6D",
+		"7D", "7D", "7D", "7D",
+		"8D", "8D", "8D", "8D",
+		"7D", "7D", "7D", "7D",
+		"6D", "6D", "6D", "6D",
+		"7D", "7D", "7D", "7D",
+		"8D", "8D", "8D", "8D",
+		"J", "J", "J", "J",
+		"6D", "6D", "6D", "6D",
+		"J", "J", "J", "J",
+		"J", "J", "J", "J",
+		"J", "J", "J", "J",
+		"J", "J"
 	};
+	vector <string> deck = FULL_DECK;
 	int playGame();
 	void makePlayers();
 	void dealCards(Player&, int = 1);
@@ -78,8 +94,8 @@ public:
 	bool checkDraw(Player&, string);
 	string getValue(string);
 	char getSuit(string);
-	int getOrder(Player, int);
-	void sortCards(Player&);
+	int getOrder(vector <string>, int);
+	void sortCards(vector <string>&);
 	int pointsForCard(string);
 	int countPoints(vector<string>);
 	int callYaniv(Player&, int);
@@ -87,7 +103,7 @@ public:
 	void resetRound(int);
 	void changeTurn();
 	int countCardInVector(vector<string>, string, vector<string>&);
-	vector <string> getBestDiscard(vector<string>, vector<string> = {});
+	vector <string> getBestDiscard(vector<string>, vector<string> = {""}, bool = true);
 };
 
 void trim(string &str);
@@ -163,18 +179,18 @@ int Yaniv::playGame() {
 			history.erase(history.begin());
 		}
 		Player* activePlayer = &players[currentPlayer];
-		if (!(*activePlayer).stillPlaying) { // if active player is out, skip to next player
+		if (!activePlayer->stillPlaying) { // if active player is out, skip to next player
 			changeTurn();
 		}
-		else if ((*activePlayer).AI) { // if AI and still playing
+		else if (activePlayer->AI) { // if AI and still playing
 			// clear screen print player number and wait for enter key
 			clearScreen();
-			cout << (*activePlayer).name << "'s turn." << endl;
-			sortCards(*activePlayer);
+			cout << activePlayer->name << "'s turn." << endl;
+			sortCards(activePlayer->hand);
 			// if MIN_TO_CALL_YANIV or under, call Yaniv //
-			int points = countPoints((*activePlayer).hand);
+			int points = countPoints(activePlayer->hand);
 			if (points <= MIN_TO_CALL_YANIV) {
-				cout << (*activePlayer).name << " called Yaniv." << endl;
+				cout << activePlayer->name << " called Yaniv." << endl;
 				winner = callYaniv(*activePlayer, points);
 				if (remainingPlayers == 1) {
 					cout << "The winner is " << players[winner].name << "!" << endl;
@@ -191,18 +207,18 @@ int Yaniv::playGame() {
 				// if yes, find best discard of non-saved cards (highest point straight/set) and take face up card //
 				string discards = "";
 				string drawnCard = "";
-				vector <string> bestOfHand = getBestDiscard((*activePlayer).hand);
-				//cout << "Your hand: "; // for debug
-				//printVector((*activePlayer).hand); // for debug
+				vector <string> bestOfHand = getBestDiscard(activePlayer->hand);
+				cout << "Your hand: "; // for debug
+				printVector(activePlayer->hand); // for debug
 				cout << "Top of discard pile: ";
 				printVector(nextAvailableToTake);
-				vector <string> bestWithTaking = getBestDiscard((*activePlayer).hand, nextAvailableToTake);
-				// if taking makes a difference and taking allows playing more than 1 card
+				vector <string> bestWithTaking = getBestDiscard(activePlayer->hand, nextAvailableToTake);
+				// if taking makes a difference and taking allows playing more than 1 card (or AI can take a Joker)
 				vector <string> bestOfHandCards(bestOfHand.cbegin() + 1, bestOfHand.cend());
 				vector <string>	bestWithTakingCards(bestWithTaking.cbegin() + 1, bestWithTaking.cend());
-				if (bestOfHandCards != bestWithTakingCards && bestWithTakingCards.size() > 1) {
+				if ((bestOfHandCards != bestWithTakingCards && bestWithTakingCards.size() > 1) || bestWithTaking.front() == "J"){
 					// get cards not used in combination with face up card
-					vector <string> cardsNotSaved = (*activePlayer).hand;
+					vector <string> cardsNotSaved = activePlayer->hand;
 					for (size_t i = 0; i < bestWithTaking.size(); i++) {
 						if (count(cardsNotSaved.begin(), cardsNotSaved.end(), bestWithTaking[i])) {
 							cardsNotSaved.erase(find(cardsNotSaved.begin(), cardsNotSaved.end(), bestWithTaking[i]));
@@ -212,53 +228,79 @@ int Yaniv::playGame() {
 					if (cardsNotSaved.size()) {
 						bestOfHand = getBestDiscard(cardsNotSaved);
 					}
-					drawnCard = bestWithTaking[0];
-					discardPile.erase(find(discardPile.begin(), discardPile.end(), bestWithTaking[0]));
-					(*activePlayer).hand.push_back(bestWithTaking[0]);
-					sortCards(*activePlayer);
+
+					drawnCard = bestWithTaking.front();
+					discardPile.erase(find(discardPile.begin(), discardPile.end(), bestWithTaking.front()));
+					activePlayer->hand.push_back(bestWithTaking.front());
+					sortCards(activePlayer->hand);
 				}
 				else {
-					// if average of non-held/discarded cards is lower than left and right available discard, take from deck //
-					// figure out average value of cards not in AI's hand or discard pile
-					vector <string> unknowns = deck;
-					for (size_t i = 0; i < players.size(); i++) {
-						if (i != currentPlayer) {
-							unknowns.insert(unknowns.end(), players[i].hand.begin(), players[i].hand.end());
+					// check if drawing an available card will help AI on next turn
+					bool drawnCardAlready = false;
+					vector <string> savedCards = activePlayer->hand;
+					for (size_t i = 1; i < bestOfHand.size(); i++)	{
+						savedCards.erase(find(savedCards.begin(),savedCards.end(), bestOfHand[i]));
+					}
+					// if AI has cards to save
+					if (savedCards.size()) {
+						vector <string> bestOfSaved = getBestDiscard(savedCards);
+						vector <string> bestOfSavedWithTaking = getBestDiscard(savedCards, nextAvailableToTake, false);
+						vector <string> bestOfSavedCards(bestOfSaved.cbegin() + 1, bestOfSaved.cend());
+						vector <string>	bestOfSavedWithTakingCards(bestOfSavedWithTaking.cbegin() + 1, bestOfSavedWithTaking.cend());
+						// if taking makes a difference and taking allows playing more than 1 card (or AI can take a Joker)
+						if ((bestOfSavedCards != bestOfSavedWithTakingCards && bestOfSavedWithTakingCards.size() > 1) || bestOfSavedWithTaking.front() == "J") {
+							// draw card from available
+							drawnCard = bestOfSavedWithTaking.front();
+							discardPile.erase(find(discardPile.begin(), discardPile.end(), bestOfSavedWithTaking.front()));
+							activePlayer->hand.push_back(bestOfSavedWithTaking.front());
+							sortCards(activePlayer->hand);
+							drawnCardAlready = true;
 						}
 					}
-					int sumOfUnknowns = 0;
-					for (size_t i = 0; i < unknowns.size(); i++) {
-						sumOfUnknowns += pointsForCard(unknowns[i]);
-					}
-					int averageOfUnknowns = sumOfUnknowns / unknowns.size();
 
-					// take from draw pile if:
-					// EITHER average of unknowns is less than the lower of available cards (left card is always smaller or equal to right card)
-					// OR your hand is very low, gamble for a card lower than available
-					int leftoverPts = countPoints((*activePlayer).hand) - countPoints(bestOfHand);
-					if ((averageOfUnknowns < pointsForCard(nextAvailableToTake[0])) ||
-						(leftoverPts <= 7 && pointsForCard(nextAvailableToTake[0]) >= (8 - leftoverPts))) {
-						// take from draw pile
-						dealCards(*activePlayer);
-						if (CAN_SLAPDOWN) {
-							// check for slapdown
-							drawnCard = (*activePlayer).hand.back();
-							if (getValue(drawnCard) == getValue(bestOfHand[1]) && getValue(drawnCard) == getValue(bestOfHand.back()) && drawnCard != "J") {
-								slapdown = drawnCard;
+					if (!drawnCardAlready) {
+						// if average of non-held/discarded cards is lower than left and right available discard, take from deck //
+						// figure out average value of cards not in AI's hand or discard pile
+						vector <string> unknowns = deck;
+						for (size_t i = 0; i < players.size(); i++) {
+							if (i != currentPlayer) {
+								unknowns.insert(unknowns.end(), players[i].hand.begin(), players[i].hand.end());
 							}
 						}
-						// hide card from other players
-						drawnCard = "from the draw pile";
-					}
-					// if not, take smaller of face up cards
-					else {
-						drawnCard = nextAvailableToTake[0];
-						discardPile.erase(find(discardPile.begin(), discardPile.end(), nextAvailableToTake[0]));
-						(*activePlayer).hand.push_back(nextAvailableToTake[0]); // take from discard
+						int sumOfUnknowns = 0;
+						for (size_t i = 0; i < unknowns.size(); i++) {
+							sumOfUnknowns += pointsForCard(unknowns[i]);
+						}
+						int averageOfUnknowns = sumOfUnknowns / unknowns.size();
+
+						// take from draw pile if:
+						// EITHER average of unknowns is less than the lower of available cards (left card is always smaller or equal to right card)
+						// OR your hand is very low, gamble for a card lower than available
+						int leftoverPts = countPoints(activePlayer->hand) - countPoints(bestOfHand);
+						if ((averageOfUnknowns < pointsForCard(nextAvailableToTake[0])) ||
+							(leftoverPts <= 7 && pointsForCard(nextAvailableToTake[0]) >= (8 - leftoverPts))) {
+							// take from draw pile
+							dealCards(*activePlayer);
+							if (CAN_SLAPDOWN) {
+								// check for slapdown
+								drawnCard = activePlayer->hand.back();
+								if (getValue(drawnCard) == getValue(bestOfHand[1]) && getValue(drawnCard) == getValue(bestOfHand.back()) && drawnCard != "J") {
+									slapdown = drawnCard;
+								}
+							}
+							// hide card from other players
+							drawnCard = "from the draw pile";
+						}
+						// if not, take smaller of face up cards
+						else {
+							drawnCard = nextAvailableToTake[0];
+							discardPile.erase(find(discardPile.begin(), discardPile.end(), nextAvailableToTake[0]));
+							activePlayer->hand.push_back(nextAvailableToTake[0]); // take from discard
+						}
 					}
 				}
 				// discard best of held cards //
-				cout << (*activePlayer).name << " discarded";
+				cout << activePlayer->name << " discarded";
 				for (size_t i = 1; i < bestOfHand.size(); i++) {
 					cout << " " + bestOfHand[i];
 					discards += bestOfHand[i] + " ";
@@ -269,19 +311,19 @@ int Yaniv::playGame() {
 				}
 				cout << "." << endl;
 
+				cout << activePlayer->name << " picked up " << drawnCard << "." << endl;
+
 				if (slapdown != "") {
 					cout << "The " << slapdown << " that was drawn was slapped down!" << endl;
-					(*activePlayer).hand.pop_back(); // remove last card from hand
+					activePlayer->hand.pop_back(); // remove last card from hand
 					discardPile.push_back(slapdown); // add to discard pile
 					nextAvailableToTake.push_back(slapdown); // add to end of next available to take
 				}
 
-				cout << (*activePlayer).name << " picked up " << drawnCard << "." << endl;
-
 				// put discarded cards into availableToTake for next player
 				availableToTake = nextAvailableToTake;
 
-				string turn = (*activePlayer).name + " discarded " + discards + ", picked " + drawnCard + ", and now has " + to_string((*activePlayer).hand.size()) + ((*activePlayer).hand.size() == 1 ? " card." : " cards.");
+				string turn = activePlayer->name + " discarded " + discards + ", picked " + drawnCard + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
 				history.push_back(turn);
 
 				cout << "Press enter to continue...";
@@ -290,21 +332,21 @@ int Yaniv::playGame() {
 			}
 		}
 		else { // if Human and still playing
-			
-		    // clear screen
+
+			// clear screen
 			clearScreen();
 
 			// hide cards if playing with others on-device
 			if (numHuman > 1) {
 				// print player number and wait for enter key, clear screen
-				cout << (*activePlayer).name << "'s turn." << endl;
+				cout << activePlayer->name << "'s turn." << endl;
 				cout << "Press enter to display hand...";
 				cin.getline(buffer, 100);
 				clearScreen();
 			}
 
 			// print current player, player's hand, and available cards
-			cout << (*activePlayer).name << "'s turn." << endl;
+			cout << activePlayer->name << "'s turn." << endl;
 
 			// inform player of round history
 			for (size_t i = 0; i < history.size(); i++) {
@@ -313,13 +355,13 @@ int Yaniv::playGame() {
 			if (history.size()) { cout << endl; }
 
 			cout << "Your hand: ";
-			printVector((*activePlayer).hand);
+			printVector(activePlayer->hand);
 			cout << "Top of discard pile: ";
 			printVector(availableToTake);
 
 			// check if can call Yaniv
 			bool calledYaniv = false;
-			int points = countPoints((*activePlayer).hand);
+			int points = countPoints(activePlayer->hand);
 			if (points <= MIN_TO_CALL_YANIV) {
 				char response;
 				while (true) {
@@ -344,7 +386,7 @@ int Yaniv::playGame() {
 
 			// if called Yaniv
 			if (calledYaniv) {
-				cout << (*activePlayer).name << " called Yaniv." << endl;
+				cout << activePlayer->name << " called Yaniv." << endl;
 				winner = callYaniv((*activePlayer), points);
 				if (remainingPlayers == 1) {
 					cout << "The winner is " << players[winner].name << "!" << endl;
@@ -364,7 +406,7 @@ int Yaniv::playGame() {
 					transform(discards.begin(), discards.end(), discards.begin(), ::toupper);
 					if (checkDiscards((*activePlayer), discards)) {
 						cout << "Your hand: ";
-						printVector((*activePlayer).hand);
+						printVector(activePlayer->hand);
 						break;
 					}
 				}
@@ -388,7 +430,7 @@ int Yaniv::playGame() {
 				// put discarded cards into availableToTake for next player
 				availableToTake = nextAvailableToTake;
 
-				string turn = (*activePlayer).name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string((*activePlayer).hand.size()) + ((*activePlayer).hand.size() == 1 ? " card." : " cards.");
+				string turn = activePlayer->name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
 				history.push_back(turn);
 
 				cout << "Press enter to end turn...";
@@ -407,8 +449,8 @@ void Yaniv::makePlayers() {
 		cin >> numHuman;
 		numPlayers = numHuman;
 		if (cin.fail() || numPlayers < 0 || numPlayers > MAX_PLAYERS) {
-			cout << "The number of players must be between " << MIN_PLAYERS << " and "<< MAX_PLAYERS << "." << endl;
-			cin.clear(); 
+			cout << "The number of players must be between " << MIN_PLAYERS << " and " << MAX_PLAYERS << "." << endl;
+			cin.clear();
 			cin.ignore(numeric_limits<streamsize>::max(), '\n');
 		}
 		else {
@@ -477,7 +519,7 @@ void Yaniv::makePlayers() {
 
 		// deal and sort cards
 		dealCards(players[i], CARDS_AT_START);
-		sortCards(players[i]);
+		sortCards(players[i].hand);
 	}
 
 	// make a card available for first player to take
@@ -539,10 +581,10 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 			}
 		}
 	}
-	
+
 	// if tried putting in 2 jokers when player only has 1
 	if (count(player.hand.begin(), player.hand.end(), "J") < count(cardsToDiscard.begin(), cardsToDiscard.end(), "J")) {
-		cout << "You don't have "<< count(cardsToDiscard.begin(), cardsToDiscard.end(), "J") << " Jokers." << endl;
+		cout << "You don't have " << count(cardsToDiscard.begin(), cardsToDiscard.end(), "J") << " Jokers." << endl;
 		return false;
 	}
 
@@ -589,7 +631,7 @@ bool Yaniv::checkDiscards(Player &player, string discards) {
 			}
 			else {
 				// skip value that is replaced by Joker
-				nextValue(currCardValue); 
+				nextValue(currCardValue);
 				// if next card is also Joker, skip a second time (ex. 7D J J 10D)
 				if (i != cardsToDiscard.size() - 1) {
 					if (cardsToDiscard[i + 1] == "J") {
@@ -633,7 +675,7 @@ string Yaniv::nextValue(string &value) {
 	if (value == "10") { value = "J"; }
 	else if (value == "J") { value = "Q"; }
 	else if (value == "Q") { value = "K"; }
-	else if (value == "K") { value = "--"; }
+	else if (value == "K") { value = "-"; }
 	else if (value == "A") { value = "2"; }
 	else if (value.at(0) <= '8') { ++value.at(0); }
 	else if (value == "9") { value = "10"; }
@@ -679,7 +721,7 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 		}
 
 		// sort and display hand
-		sortCards(player);
+		sortCards(player.hand);
 		cout << "Your hand: ";
 		printVector(player.hand);
 		return true;
@@ -706,9 +748,9 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 		if (JokerPos != availableToTake.size() - 1 && JokerPos) {
 			// if next/prev card has same suit or is J AND next card has next value AND prev card has prev value
 			if ((nextCardSuit == cardPlayedSuit || nextCardSuit == 'J') &&
-			(prevCardSuit == cardPlayedSuit || prevCardSuit == 'J') &&
-			(prevCardValue == prevValue(cardPlayedValue)) &&
-			(nextCardValue == nextValue(cardPlayedValue))) {
+				(prevCardSuit == cardPlayedSuit || prevCardSuit == 'J') &&
+				(prevCardValue == prevValue(cardPlayedValue)) &&
+				(nextCardValue == nextValue(cardPlayedValue))) {
 				validDraw = true;
 			}
 		}
@@ -716,7 +758,7 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 	if (validDraw) {
 		discardPile.erase(find(discardPile.begin(), discardPile.end(), draw));
 		player.hand.push_back(draw);
-		sortCards(player);
+		sortCards(player.hand);
 		cout << "Your hand: ";
 		printVector(player.hand);
 		return true;
@@ -734,8 +776,8 @@ char Yaniv::getSuit(string card) {
 	return card.at(card.length() - 1);
 }
 
-int Yaniv::getOrder(Player player, int i) {
-	string value = getValue(player.hand[i]);
+int Yaniv::getOrder(vector <string> hand, int i) {
+	string value = getValue(hand[i]);
 	if (value == "") { return 0; }
 	else if (value == "10") { return 10; }
 	else if (value == "J") { return 11; }
@@ -748,41 +790,42 @@ int Yaniv::getOrder(Player player, int i) {
 	return -1;
 }
 
-void Yaniv::sortCards(Player &player) {
+void Yaniv::sortCards(vector <string> &hand) {
 	size_t i;
 	int j, key;
 	string keyStr;
-	for (i = 1; i < player.hand.size(); i++) {
-		keyStr = player.hand[i];
-		key = getOrder(player, i); //arr[i];
+	for (i = 1; i < hand.size(); i++) {
+		keyStr = hand[i];
+		key = getOrder(hand, i); //arr[i];
 		j = i - 1;
-		while (j >= 0 && getOrder(player, j) > key) { // arr[j]
-			player.hand[j+1] = player.hand[j]; // arr[j]
+		while (j >= 0 && getOrder(hand, j) > key) { // arr[j]
+			hand[j + 1] = hand[j]; // arr[j]
 			j = j - 1;
 		}
-		player.hand[j + 1] = keyStr;
+		hand[j + 1] = keyStr;
 	}
 }
 
 int Yaniv::pointsForCard(string card) {
 	string value = getValue(card);
-	if (value != "") { // Joker is only 1 char, so substring will be "". (Joker adds 0)
-		if (value == "10" || value == "J" || value == "Q" || value == "K") {
-			return 10;
-		}
-		else if (value == "A") {
-			return 1;
-		}
-		else if (value.at(0) <= '9') {
-			return (value.at(0) - '0');
-		}
+	if (value == "") { // Joker is only 1 char, so substring will be "". (Joker adds 0)
+		return 0;
 	}
-	return 0;
+	if (value == "10" || value == "J" || value == "Q" || value == "K") {
+		return 10;
+	}
+	else if (value == "A") {
+		return 1;
+	}
+	else if (value.at(0) <= '9') {
+		return (value.at(0) - '0');
+	}
+	return -1; // should never happen
 }
 
 int Yaniv::countPoints(vector <string> hand) {
 	int sum = 0;
-	for (size_t i = 0; i < hand.size(); i++)	{
+	for (size_t i = 0; i < hand.size(); i++) {
 		sum += pointsForCard(hand[i]);
 	}
 	return sum;
@@ -878,7 +921,7 @@ int Yaniv::callYaniv(Player &activePlayer, int activePlayerPoints) {
 
 void Yaniv::resetGame(int winner) {
 	remainingPlayers = numPlayers;
-	for (size_t i = 0; i < players.size(); i++)	{
+	for (size_t i = 0; i < players.size(); i++) {
 		players[i].score = 0;
 		players[i].stillPlaying = true;
 	}
@@ -886,22 +929,7 @@ void Yaniv::resetGame(int winner) {
 }
 
 void Yaniv::resetRound(int winner) {
-	deck = {
-	"AC", "AH", "AS", "AD",
-	"2C", "2H", "2S", "2D",
-	"3C", "3H", "3S", "3D",
-	"4C", "4H", "4S", "4D",
-	"5C", "5H", "5S", "5D",
-	"6C", "6H", "6S", "6D",
-	"7C", "7H", "7S", "7D",
-	"8C", "8H", "8S", "8D",
-	"9C", "9H", "9S", "9D",
-	"10C", "10H", "10S", "10D",
-	"JC", "JH", "JS", "JD",
-	"QC", "QH", "QS", "QD",
-	"KC", "KH", "KS", "KD",
-	"J", "J"
-	};
+	deck = FULL_DECK;
 	random_shuffle(deck.begin(), deck.end());
 	currentPlayer = winner;
 	discardPile.clear();
@@ -913,7 +941,7 @@ void Yaniv::resetRound(int winner) {
 	for (size_t i = 0; i < players.size(); i++) {
 		players[i].hand.clear();
 		dealCards(players[i], CARDS_AT_START);
-		sortCards(players[i]);
+		sortCards(players[i].hand);
 	}
 
 	// make a card available for first player to take
@@ -945,39 +973,141 @@ int Yaniv::countCardInVector(vector<string> v, string c, vector<string> &discard
 	return count;
 }
 
-vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availableCards) {
+vector <string> Yaniv::getBestDiscard(vector<string> hand, vector<string> availableCards, bool takingFromDiscard) {
 	vector <string> discard;
 	int bestDiscardPts = pointsForCard(hand.back());
 	vector <string> bestDiscard = { hand.back() };
 	string draw = "";
 	string bestDraw = draw;
+	int numAvailableCards = availableCards.size();
+	if (availableCards.front() == "") {
+		takingFromDiscard = false;
+	}
+
+	bool ableToTakeFromMiddle = false;
+	// if the cards down are multiples of the same card
+	// and if can take any card when multiples are played
+	if (CAN_TAKE_FROM_MIDDLE_OF_SET && availableCards.front() == availableCards.back() && availableCards.front() != "J") {
+		ableToTakeFromMiddle = true;
+	}
+
+	int j = 0;
 
 	// do twice if available cards
-	for (size_t j = 0; j < 2; j++) {
-		// if checking available card
-		if (availableCards.size()) {
-			draw = (j == 0) ? availableCards.front() : availableCards.back();
-			hand.push_back(draw);
+	while (j < numAvailableCards) {
+		// if checking available cards
+		if (availableCards.front() != "") {
+			if (!ableToTakeFromMiddle && j == 1) { // if done with 0 and can't take from middle
+				j = availableCards.size() - 1; // skip to last card of available cards
+			}
+			draw = availableCards[j]; // card to draw is j
+			hand.push_back(draw); // add draw to temporary hand
+			sortCards(hand);
 		}
 
-		vector <string> cardValues = { "A","2","3","4","5","6","7","8","9","10","J","Q","K" };
-		vector <int> cardValuesPts = { 1,2,3,4,5,6,7,8,9,10,10,10,10 };
-		for (int k = 0; k < 13; k++) {
+		// check for multiples
+		const string cardValues[] = { "","A","2","3","4","5","6","7","8","9","10","J","Q","K" };
+		const int cardValuesPts[] = { 0,1,2,3,4,5,6,7,8,9,10,10,10,10 };
+		for (int k = 0; k < 14; k++) {
+			vector <string> savedCards = hand;
 			discard.clear();
 			int pointsForAllOfValue = countCardInVector(hand, cardValues[k], discard) * cardValuesPts[k];
+			if (draw == "J") { pointsForAllOfValue += 99; } // if can draw a joker, always do it
 			if (pointsForAllOfValue > bestDiscardPts) {
-				bestDiscardPts = pointsForAllOfValue;
-				bestDiscard = discard;
-				bestDraw = draw;
+				for (size_t i = 0; i < discard.size(); i++)
+					savedCards.erase(find(savedCards.begin(), savedCards.end(), discard[i]));
+				if (savedCards.size() == 0) { savedCards.push_back(""); }
+				// if taking a card, must play more than 1 card, otherwise, 1 card is fine
+				// if picking an available card, then highest card after discarding this set should not be a Joker
+				if ((discard.size() > 1 && savedCards.back() != "J") || (!takingFromDiscard)) {
+					bestDiscardPts = pointsForAllOfValue;
+					bestDiscard = discard;
+					bestDraw = draw;
+				}
+			}
+		}
+
+		// check for series
+		int numJokers = count(hand.begin(), hand.end(), "J");
+		vector <string> savedCards;
+		for (size_t k = 0; k < hand.size(); k++) {
+			string firstCardValue;
+			char firstCardSuit;
+			int unusedJokers = numJokers;
+			savedCards = hand;
+			discard.clear();
+			// Get suit and value of first card that's NOT a Joker
+			for (size_t i = k; i < hand.size(); i++) {
+				if (hand[i] != "J") {
+					firstCardValue = getValue(hand[i]);
+					firstCardSuit = getSuit(hand[i]);
+					discard.push_back(hand[i]);
+					savedCards.erase(savedCards.begin()+i);
+					k = i;
+					break;
+				}
+			}
+			if (!discard.size()) { break; }
+			// check remaining cards if can make a series
+			for (size_t l = k + 1; l <= hand.size() + unusedJokers; l++) {
+				string nextVal = nextValue(firstCardValue);
+				string nextCard = nextVal + firstCardSuit;
+				// if hand contains next card needed in series
+				if (count(hand.begin() + k, hand.end(), nextCard)) {
+					discard.push_back(nextCard);
+					savedCards.erase(find(savedCards.begin(), savedCards.end(), nextCard));
+				}
+				// if don't have the right card and can use joker (and last card was not a king)
+				else if (unusedJokers > 0 && getValue(nextCard) != "-") {
+					--unusedJokers;
+					discard.push_back("J");
+					savedCards.erase(savedCards.begin());
+				}
+				// if last card was a king, have a joker, and don't already have 3 cards to discard
+				else if (unusedJokers > 0 && getValue(nextCard) != "-" && discard.size() < 3) {
+					--unusedJokers;
+					discard.insert(discard.begin(), "J"); // put joker at front
+					savedCards.erase(savedCards.begin());
+					break;
+				}
+				else {
+					break; // can't continue series
+				}
+			}
+			while (discard.back() == "J") {
+				// if saved cards are 3 or fewer points and card before leading joker is not a joker and joker is needed as 3rd card
+				// i.e. if hand is low and using only 1 joker to get rid of a couple extra cards, keep joker on end of series
+				if (countPoints(savedCards) <= MIN_TO_CALL_YANIV - 4 && discard[discard.size() - 2] != "J" && discard.size() <= 3) {
+					break;
+				}
+				discard.pop_back(); // don't end series with a joker
+				savedCards.insert(savedCards.begin(), "J");
+			}
+			if (savedCards.size() == 0) { savedCards.push_back(""); }
+			// if taking to make a series and highest card you can discard is a joker
+			if ((savedCards.back() == "J" && takingFromDiscard)) {
+				discard.clear(); // don't discard joker to make series
+			}
+			if (discard.size() >= 3) {
+				int pointsForSeries = countPoints(discard);
+				if (draw == "J") { pointsForSeries += 99; } // if can draw a joker, always do it
+				if (pointsForSeries > bestDiscardPts) {
+					bestDiscardPts = pointsForSeries;
+					bestDiscard = discard;
+					bestDraw = draw;
+				}
 			}
 		}
 
 		// if not checking available cards break after 1 pass
-		if (availableCards.size() == 0) {
+		if (availableCards.front() == "") {
 			break;
 		}
 
-		hand.pop_back(); // remove additional card to check with 2nd available card only
+		// remove additional card to check with 2nd available card only
+		hand.erase(find(hand.begin(), hand.end(), draw));
+
+		++j;
 	}
 
 	bestDiscard.insert(bestDiscard.begin(), bestDraw);
