@@ -1,6 +1,6 @@
 // C++ Yaniv Card Game
 // Yonah Lawrence
-// 8-13 January, 2019
+// 8-14 January, 2019
 // 
 
 #include <iostream>
@@ -33,6 +33,23 @@ void clearScreen() { system("CLS"); }
 void clearScreen() { cout << string(50, '\n'); }
 #endif
 
+const vector <string> FULL_DECK = {
+	"AC", "AH", "AS", "AD",
+	"2C", "2H", "2S", "2D",
+	"3C", "3H", "3S", "3D",
+	"4C", "4H", "4S", "4D",
+	"5C", "5H", "5S", "5D",
+	"6C", "6H", "6S", "6D",
+	"7C", "7H", "7S", "7D",
+	"8C", "8H", "8S", "8D",
+	"9C", "9H", "9S", "9D",
+	"10C", "10H", "10S", "10D",
+	"JC", "JH", "JS", "JD",
+	"QC", "QH", "QS", "QD",
+	"KC", "KH", "KS", "KD",
+	"J", "J",
+};
+
 struct Player {
 	bool AI = false;
 	string name;
@@ -54,22 +71,6 @@ public:
 	vector <string> availableToTake;
 	vector <string> nextAvailableToTake;
 	vector <string> history;
-	const vector <string> FULL_DECK = {
-		"AC", "AH", "AS", "AD",
-		"2C", "2H", "2S", "2D",
-		"3C", "3H", "3S", "3D",
-		"4C", "4H", "4S", "4D",
-		"5C", "5H", "5S", "5D",
-		"6C", "6H", "6S", "6D",
-		"7C", "7H", "7S", "7D",
-		"8C", "8H", "8S", "8D",
-		"9C", "9H", "9S", "9D",
-		"10C", "10H", "10S", "10D",
-		"JC", "JH", "JS", "JD",
-		"QC", "QH", "QS", "QD",
-		"KC", "KH", "KS", "KD",
-		"J", "J",
-	};
 	vector <string> deck = FULL_DECK;
 	int playGame();
 	void makePlayers();
@@ -78,7 +79,7 @@ public:
 	bool checkDiscards(Player&, string);
 	string prevValue(string);
 	string nextValue(string&);
-	bool checkDraw(Player&, string);
+	bool checkDraw(Player&, string, string&);
 	string getValue(string);
 	char getSuit(string);
 	int getOrder(vector <string>, int);
@@ -153,8 +154,10 @@ int Yaniv::playGame() {
 	int winner;
 	char buffer[100];
 	while (true) {
-		if (history.size() >= players.size()) {
+		int historyLines = history.size();
+		while (historyLines >= remainingPlayers) {
 			history.erase(history.begin());
+			--historyLines;
 		}
 		Player* activePlayer = &players[currentPlayer];
 		if (!activePlayer->stillPlaying) { // if active player is out, skip to next player
@@ -217,9 +220,6 @@ int Yaniv::playGame() {
 				string discards = "";
 				string drawnCard = "";
 				vector <string> bestOfHand = getBestDiscard(activePlayer->hand);
-	
-				cout << "Top of discard pile: ";
-				printVector(nextAvailableToTake);
 				vector <string> bestWithTaking = getBestDiscard(activePlayer->hand, nextAvailableToTake);
 				// if taking makes a difference and taking allows playing more than 1 card (or AI can take a Joker)
 				vector <string> bestOfHandCards(bestOfHand.cbegin() + 1, bestOfHand.cend());
@@ -320,7 +320,12 @@ int Yaniv::playGame() {
 				// put discarded cards into availableToTake for next player
 				availableToTake = nextAvailableToTake;
 
-				string turn = activePlayer->name + " discarded " + discards + ", picked " + drawnCard + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+				string turn;
+				if (slapdown.length())
+					turn = activePlayer->name + " discarded " + discards + " " + slapdown + " (" + slapdown + " was slapped down)" + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+				else
+					turn = activePlayer->name + " discarded " + discards + ", picked " + drawnCard + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+
 				history.push_back(turn);
 
 				cout << "Press enter to continue...";
@@ -408,6 +413,7 @@ int Yaniv::playGame() {
 
 					// choose card to draw
 					string draw;
+					string slapdown;
 					while (true) {
 						cout << "Which card do you want to draw (type 'D' for draw pile)? ";
 						getline(cin, draw);
@@ -425,7 +431,7 @@ int Yaniv::playGame() {
 							undo = true;
 							break;
 						}
-						if (checkDraw(players[currentPlayer], draw)) {
+						if (checkDraw(players[currentPlayer], draw, slapdown)) {
 							undo = false;
 							break;
 						}
@@ -435,7 +441,12 @@ int Yaniv::playGame() {
 						// put discarded cards into availableToTake for next player
 						availableToTake = nextAvailableToTake;
 
-						string turn = activePlayer->name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+						string turn;
+						if (slapdown.length())
+							turn = activePlayer->name + " discarded " + discards + " " + slapdown + " (" + slapdown + " was slapped down)" + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+						else 
+							turn = activePlayer->name + " discarded " + discards + ", picked " + (draw == "D" ? "from the draw pile" : draw) + ", and now has " + to_string(activePlayer->hand.size()) + (activePlayer->hand.size() == 1 ? " card." : " cards.");
+
 						history.push_back(turn);
 					}
 
@@ -454,7 +465,7 @@ void Yaniv::makePlayers() {
 	bool response;
 
 	// Set up rule variations
-	if (!getYesOrNoResponse(response, "Do you want to use the default rules? (Y/N): ")) {
+	if (!getYesOrNoResponse(response, "Do you want to play with the default rules? (Y/N): ")) {
 		/* NUMBERS */
 		cout << "How many cards should each player be dealt? (Default: 5) " << endl;
 		getPositiveNum(CARDS_AT_START, "Enter a positive number of cards: "); // cards each player is dealt
@@ -711,7 +722,7 @@ string Yaniv::nextValue(string &value) {
 	return value;
 }
 
-bool Yaniv::checkDraw(Player &player, string draw) {
+bool Yaniv::checkDraw(Player &player, string draw, string& slapdown) {
 	bool validDraw = false;
 	if (draw.size() == 0) { return false; }
 	if (draw.at(0) == 'D' && draw.length() == 1) {
@@ -727,6 +738,7 @@ bool Yaniv::checkDraw(Player &player, string draw) {
 				string request = "Do you want to slap down the " + drawnCard + " you drew? (Y/N): ";
 				if (getYesOrNoResponse(response, request)) {
 					cout << "The " << drawnCard << " you drew was slapped down!" << endl;
+					slapdown = drawnCard;
 					player.hand.pop_back(); // remove last card from hand
 					discardPile.push_back(drawnCard); // add to discard pile
 					nextAvailableToTake.push_back(drawnCard); // add to end of next available to take
